@@ -52,6 +52,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class StarhavenSMPCore extends JavaPlugin {
 
@@ -81,7 +82,8 @@ public class StarhavenSMPCore extends JavaPlugin {
     private static final int WEB_PORT = 6969;
     private static final long SUGGESTION_CACHE_MS = 5_000L;
 
-    private volatile List<String> marketItemSuggestionCache = Collections.emptyList();
+    private final AtomicReference<List<String>> marketItemSuggestionCache =
+            new AtomicReference<>(Collections.emptyList());
     private volatile long marketItemSuggestionLastRefresh = 0L;
     private final AtomicBoolean marketItemSuggestionRefreshing = new AtomicBoolean(false);
     private final Map<UUID, List<String>> ownedItemSuggestionCache = new ConcurrentHashMap<>();
@@ -425,7 +427,7 @@ public class StarhavenSMPCore extends JavaPlugin {
     private List<String> getMarketItemSuggestions(String prefix) {
         refreshMarketItemSuggestionCache();
         List<String> suggestions = new ArrayList<>();
-        for (String name : marketItemSuggestionCache) {
+        for (String name : marketItemSuggestionCache.get()) {
             if (name.startsWith(prefix)) {
                 suggestions.add(name);
             }
@@ -563,7 +565,7 @@ public class StarhavenSMPCore extends JavaPlugin {
                 }
                 unique.add(item.getType().toString().toLowerCase());
             }
-            marketItemSuggestionCache = new ArrayList<>(unique);
+            marketItemSuggestionCache.set(new ArrayList<>(unique));
             marketItemSuggestionLastRefresh = System.currentTimeMillis();
             marketItemSuggestionRefreshing.set(false);
         });
