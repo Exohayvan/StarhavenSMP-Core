@@ -53,7 +53,11 @@ jobs:
         id: jar_info
         run: |
           # Extract the built JAR file's name
-          jar_file=$(ls target/*.jar | xargs -n 1 basename)
+          jar_file=$(ls target/*.jar | xargs -n 1 basename | grep -v '^original-' | head -n 1)
+          if [ -z "$jar_file" ]; then
+            echo "No shaded jar found in target/"
+            exit 1
+          fi
           # Extract tag name (without .jar extension)
           tag_name="${jar_file%.jar}"
           echo "jar_file=$jar_file" >> $GITHUB_OUTPUT
