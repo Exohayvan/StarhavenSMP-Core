@@ -10,6 +10,7 @@ Debug:
   CustomBlocks: false
   OreGeneration: false
   Waystone: false
+  BStats: false
 
 ResourcePack:
   Enabled: false

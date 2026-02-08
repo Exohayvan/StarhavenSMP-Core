@@ -112,6 +112,7 @@ public class StarhavenSMPCore extends JavaPlugin {
     private boolean debugCustomBlocks;
     private boolean debugOreGeneration;
     private boolean debugWaystone;
+    private boolean debugBStats;
 
     @Override
     public void onEnable() {
@@ -128,6 +129,7 @@ public class StarhavenSMPCore extends JavaPlugin {
         teamService = new TeamService(this, databaseManager, economyManager);
         helpMenu = new HelpMenu();
         bStatsModule = new BStatsModule(this, databaseManager);
+        bStatsModule.updateDebugLogging(debugBStats);
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             try {
                 placeholders = new Placeholders(this, databaseManager);
@@ -220,6 +222,9 @@ public class StarhavenSMPCore extends JavaPlugin {
         if (resourcePackManager != null) {
             resourcePackManager.reload();
         }
+        if (bStatsModule != null) {
+            bStatsModule.updateDebugLogging(debugBStats);
+        }
     }
 
     private void loadConfigValues() {
@@ -237,6 +242,7 @@ public class StarhavenSMPCore extends JavaPlugin {
         debugCustomBlocks = config.getBoolean("Debug.CustomBlocks", false);
         debugOreGeneration = config.getBoolean("Debug.OreGeneration", false);
         debugWaystone = config.getBoolean("Debug.Waystone", false);
+        debugBStats = config.getBoolean("Debug.BStats", false);
     }
 
     public boolean isDebugMarket() {
@@ -253,6 +259,10 @@ public class StarhavenSMPCore extends JavaPlugin {
 
     public boolean isDebugWaystone() {
         return debugWaystone;
+    }
+
+    public boolean isDebugBStats() {
+        return debugBStats;
     }
 
     @Override
