@@ -49,7 +49,7 @@ jobs:
           }
           project="Exohayvan_StarhavenSMP-Core"
           url="https://sonarcloud.io/api/project_badges/measure?project=${project}&metric=reliability_rating"
-          svg="$(curl -fsSL "$url")"
+          svg="$(curl -fsSL --proto '=https' --tlsv1.2 "$url")"
 
           grade="$(printf '%s' "$svg" | grep -oE '<text[^>]*>[A-E]</text>' | head -n1 | sed -E 's/.*>([A-E])<.*/\1/' || true)"
           [ -n "${grade:-}" ] || grade="?"
@@ -86,7 +86,7 @@ jobs:
           }
           project="Exohayvan_StarhavenSMP-Core"
           url="https://sonarcloud.io/api/project_badges/measure?project=${project}&metric=sqale_rating"
-          svg="$(curl -fsSL "$url")"
+          svg="$(curl -fsSL --proto '=https' --tlsv1.2 "$url")"
 
           grade="$(printf '%s' "$svg" | grep -oE '<text[^>]*>[A-E]</text>' | head -n1 | sed -E 's/.*>([A-E])<.*/\1/' || true)"
           [ -n "${grade:-}" ] || grade="?"
@@ -123,7 +123,7 @@ jobs:
           }
           project="Exohayvan_StarhavenSMP-Core"
           url="https://sonarcloud.io/api/project_badges/measure?project=${project}&metric=vulnerabilities"
-          svg="$(curl -fsSL "$url")"
+          svg="$(curl -fsSL --proto '=https' --tlsv1.2 "$url")"
 
           # Try to pull the number robustly
           count="$(printf '%s' "$svg" | grep -oE '<text[^>]*>[0-9]+</text>' | head -n1 | sed -E 's/.*>([0-9]+)<.*/\1/' || true)"
@@ -162,7 +162,7 @@ jobs:
           }
           project="Exohayvan_StarhavenSMP-Core"
           url="https://sonarcloud.io/api/project_badges/measure?project=${project}&metric=duplicated_lines_density"
-          svg="$(curl -fsSL "$url")"
+          svg="$(curl -fsSL --proto '=https' --tlsv1.2 "$url")"
 
           pct="$(printf '%s' "$svg" | grep -oE '<text[^>]*>[0-9]+(\.[0-9]+)?%</text>' | head -n1 | sed -E 's/.*>([0-9]+(\.[0-9]+)?%)<.*/\1/' || true)"
 
@@ -204,7 +204,7 @@ jobs:
           }
           project="Exohayvan_StarhavenSMP-Core"
           url="https://sonarcloud.io/api/project_badges/measure?project=${project}&metric=security_rating"
-          svg="$(curl -fsSL "$url")"
+          svg="$(curl -fsSL --proto '=https' --tlsv1.2 "$url")"
 
           grade="$(printf '%s' "$svg" | grep -oE '<text[^>]*>[A-E]</text>' | head -n1 | sed -E 's/.*>([A-E])<.*/\1/' || true)"
           [ -n "${grade:-}" ] || grade="?"
@@ -227,7 +227,7 @@ jobs:
           set -euo pipefail
 
           SVG_URL="https://sonarcloud.io/api/project_badges/measure?project=Exohayvan_StarhavenSMP-Core&metric=coverage"
-          svg="$(curl -fsSL "$SVG_URL")"
+          svg="$(curl -fsSL --proto '=https' --tlsv1.2 "$SVG_URL")"
 
           # Extract coverage percentage (e.g. 72.4%)
           coverage="$(printf '%s' "$svg" \
@@ -277,7 +277,7 @@ jobs:
             echo "Badge updated: $path"
           }
           api="https://api.codetabs.com/v1/loc/?github=ExoHayvan/StarhavenSMP-Core"
-          json="$(curl -fsSL "$api" | tr '\n' ' ')"
+          json="$(curl -fsSL --proto '=https' --tlsv1.2 "$api" | tr '\n' ' ')"
 
           # Grab the Total object chunk, then extract numbers
           total_chunk="$(printf '%s' "$json" | grep -oE '\{[^}]*"language"[[:space:]]*:[[:space:]]*"Total"[^}]*\}' | head -n1 || true)"
