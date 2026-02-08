@@ -3,6 +3,7 @@
 ![WEBSITE](https://img.shields.io/website?url=http%3A%2F%2Fstarhavensmp.mcserver.us%3A8000&up_message=Online&down_message=Offline&style=for-the-badge&label=Starhaven%20SMP&link=https%3A%2F%2Fstarhavensmp.mcserver.us%3A8000)
 ![bStats Players](https://img.shields.io/bstats/players/29398?style=for-the-badge&color=CC8899)
 ![bStats Servers](https://img.shields.io/bstats/servers/29398?style=for-the-badge&color=CC8899)
+![Market Items](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fbstats.org%2Fapi%2Fv1%2Fplugins%2F29398%2Fcharts%2Ftotal_items_in_market%2Fdata%3FmaxElements%3D1&query=%24%5B0%5D%5B1%5D&label=Market%20Items&color=CC8899&style=for-the-badge)
 
 ![FILES](https://img.shields.io/endpoint?style=for-the-badge&url=https%3A%2F%2Fraw.githubusercontent.com%2FExoHayvan%2FStarhavenSMP-Core%2Fmain%2F.badges%2Ffiles.json)
 ![LINES%20OF%20CODE](https://img.shields.io/endpoint?style=for-the-badge&url=https%3A%2F%2Fraw.githubusercontent.com%2FExoHayvan%2FStarhavenSMP-Core%2Fmain%2F.badges%2Flines_of_code.json)
