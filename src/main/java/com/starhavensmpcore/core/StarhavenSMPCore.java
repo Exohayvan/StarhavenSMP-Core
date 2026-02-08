@@ -12,6 +12,7 @@ import com.starhavensmpcore.market.gui.MarketItemsGUI;
 import com.starhavensmpcore.market.gui.MarketSellGUI;
 import com.starhavensmpcore.market.items.ItemSanitizer;
 import com.starhavensmpcore.market.items.FamilyBreakdown;
+import com.starhavensmpcore.metrics.BStatsModule;
 import com.starhavensmpcore.team.TeamService;
 import com.starhavensmpcore.help.HelpMenu;
 import com.starhavensmpcore.notifier.NotifierManager;
@@ -64,6 +65,7 @@ public class StarhavenSMPCore extends JavaPlugin {
     private MarketWebServer marketWebServer;
     private TeamService teamService;
     private HelpMenu helpMenu;
+    private BStatsModule bStatsModule;
     private Placeholders placeholders;
     private PlaceholdersSh placeholdersSh;
     private ResourcePackManager resourcePackManager;
@@ -123,6 +125,7 @@ public class StarhavenSMPCore extends JavaPlugin {
         marketWebServer = new MarketWebServer(this, databaseManager, WEB_PORT);
         teamService = new TeamService(this, databaseManager, economyManager);
         helpMenu = new HelpMenu();
+        bStatsModule = new BStatsModule(this, databaseManager);
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             try {
                 placeholders = new Placeholders(this, databaseManager);
