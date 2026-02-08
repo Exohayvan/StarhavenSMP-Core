@@ -8,6 +8,7 @@ import com.starhavensmpcore.market.items.ItemSanitizer;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -126,6 +127,13 @@ public class AutoSellManagerTest {
     }
 
     @Test
+    public void commandRejectsNonPlayers() {
+        CommandSender sender = server.getConsoleSender();
+        boolean handled = autoSellManager.onCommand(sender, mockCommand(), "autosell", new String[0]);
+        assertTrue(handled);
+    }
+
+    @Test
     public void clickTogglesAutoSellEntry() throws Exception {
         PlayerMock player = server.addPlayer();
         autoSellManager.onCommand(player, mockCommand(), "autosell", new String[0]);
@@ -182,6 +190,76 @@ public class AutoSellManagerTest {
 
         List<ItemStack> items = AutoSellManager.access$0(autoSellManager, player.getUniqueId());
         assertTrue(items.isEmpty());
+    }
+
+    @Test
+    public void clickPreviousPageUpdatesPage() throws Exception {
+        PlayerMock player = server.addPlayer();
+        UUID playerId = player.getUniqueId();
+        insertManyAutoSellRows(playerId, 46);
+        autoSellManager.onCommand(player, mockCommand(), "autosell", new String[0]);
+
+        Inventory top = getInventoryMap().get(playerId);
+        getPageMap().put(playerId, 2);
+        Method render = AutoSellManager.class.getDeclaredMethod("renderAutoSellInventory", UUID.class, Inventory.class);
+        render.setAccessible(true);
+        render.invoke(autoSellManager, playerId, top);
+
+        InventoryView view = new TestInventoryView(player, top, "AutoSell Inventory");
+        InventoryClickEvent click = new InventoryClickEvent(
+                view,
+                InventoryType.SlotType.CONTAINER,
+                48,
+                ClickType.LEFT,
+                InventoryAction.PICKUP_ALL
+        );
+        autoSellManager.onInventoryClick(click);
+
+        assertEquals(Integer.valueOf(1), getPageMap().get(playerId));
+    }
+
+    @Test
+    public void clickNextPageUpdatesPage() throws Exception {
+        PlayerMock player = server.addPlayer();
+        UUID playerId = player.getUniqueId();
+        insertManyAutoSellRows(playerId, 46);
+        autoSellManager.onCommand(player, mockCommand(), "autosell", new String[0]);
+
+        Inventory top = getInventoryMap().get(playerId);
+
+        InventoryView view = new TestInventoryView(player, top, "AutoSell Inventory");
+        InventoryClickEvent click = new InventoryClickEvent(
+                view,
+                InventoryType.SlotType.CONTAINER,
+                50,
+                ClickType.LEFT,
+                InventoryAction.PICKUP_ALL
+        );
+        autoSellManager.onInventoryClick(click);
+
+        assertEquals(Integer.valueOf(2), getPageMap().get(playerId));
+    }
+
+    @Test
+    public void clickInfoSlotDoesNotChangePage() throws Exception {
+        PlayerMock player = server.addPlayer();
+        autoSellManager.onCommand(player, mockCommand(), "autosell", new String[0]);
+
+        Inventory top = getInventoryMap().get(player.getUniqueId());
+        top.setItem(49, new ItemStack(Material.PAPER, 1));
+        getPageMap().put(player.getUniqueId(), 3);
+
+        InventoryView view = new TestInventoryView(player, top, "AutoSell Inventory");
+        InventoryClickEvent click = new InventoryClickEvent(
+                view,
+                InventoryType.SlotType.CONTAINER,
+                49,
+                ClickType.LEFT,
+                InventoryAction.PICKUP_ALL
+        );
+        autoSellManager.onInventoryClick(click);
+
+        assertEquals(Integer.valueOf(3), getPageMap().get(player.getUniqueId()));
     }
 
     @Test
@@ -299,6 +377,24 @@ public class AutoSellManagerTest {
     }
 
     @Test
+    public void normalizeStoredItemsUpdatesMismatchedRows() throws Exception {
+        PlayerMock player = server.addPlayer();
+        UUID playerId = player.getUniqueId();
+        ItemStack dirt = new ItemStack(Material.DIRT, 1);
+        String serialized = ItemSanitizer.serializeToString(dirt);
+        String mutated = serialized.replace(",", ", ").replace(":", ": ");
+
+        insertAutoSellRowRaw(playerId, mutated);
+
+        Method method = AutoSellManager.class.getDeclaredMethod("normalizeStoredItems");
+        method.setAccessible(true);
+        method.invoke(autoSellManager);
+
+        String stored = getFirstStoredItem(playerId);
+        assertEquals(serialized, stored);
+    }
+
+    @Test
     public void scheduledTaskInvokesRunAutoSellTick() {
         int before = autoSellManager.getRunCount();
         server.getScheduler().performTicks(21);
@@ -364,6 +460,16 @@ public class AutoSellManagerTest {
 
         List<ItemStack> items = AutoSellManager.access$0(autoSellManager, playerId);
         assertTrue(items.isEmpty());
+    }
+
+    @Test
+    public void createNavigationItemHandlesNullMeta() throws Exception {
+        Method method = AutoSellManager.class.getDeclaredMethod("createNavigationItem", Material.class, String.class);
+        method.setAccessible(true);
+        ItemStack item = (ItemStack) method.invoke(autoSellManager, Material.AIR, "None");
+        assertEquals(Material.AIR, item.getType());
+        assertNotNull(item.getItemMeta());
+        assertEquals("None", item.getItemMeta().getDisplayName());
     }
 
     @Test
@@ -460,6 +566,34 @@ public class AutoSellManagerTest {
             stmt.setString(2, serialized);
             stmt.executeUpdate();
         }
+    }
+
+    private void insertManyAutoSellRows(UUID playerId, int count) throws Exception {
+        int inserted = 0;
+        for (Material material : Material.values()) {
+            if (material.isAir()) {
+                continue;
+            }
+            insertAutoSellRow(playerId, new ItemStack(material, 1));
+            inserted++;
+            if (inserted >= count) {
+                break;
+            }
+        }
+    }
+
+    private String getFirstStoredItem(UUID playerId) throws Exception {
+        java.sql.Connection connection = getConnection();
+        try (java.sql.PreparedStatement stmt = connection.prepareStatement(
+                "SELECT item FROM autosell_items WHERE uuid = ? LIMIT 1")) {
+            stmt.setString(1, playerId.toString());
+            try (java.sql.ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("item");
+                }
+            }
+        }
+        return null;
     }
 
     private void invokeRemoveAutoSellItem(UUID playerId, ItemStack item) throws Exception {
