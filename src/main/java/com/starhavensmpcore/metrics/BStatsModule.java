@@ -3,15 +3,15 @@ package com.starhavensmpcore.metrics;
 import com.starhavensmpcore.core.StarhavenSMPCore;
 import com.starhavensmpcore.market.db.DatabaseManager;
 import org.bstats.bukkit.Metrics;
-import org.bstats.charts.DrilldownPie;
+import org.bstats.charts.AdvancedPie;
 import org.bstats.charts.SimplePie;
 import org.bstats.charts.SingleLineChart;
 
 import java.math.BigInteger;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.lang.reflect.Field;
 
 public final class BStatsModule {
 
@@ -45,39 +45,56 @@ public final class BStatsModule {
         this.metrics = created;
     }
 
-    private void registerCharts(Metrics metrics, StarhavenSMPCore plugin, DatabaseManager databaseManager) {
-        safeChart("total_players", () -> metrics.addCustomChart(new SingleLineChart(
-                "total_players",
-                () -> plugin.getServer().getOnlinePlayers().size()
-        )));
+    public void updateDebugLogging(boolean enabled) {
+        if (metrics == null) {
+            return;
+        }
+        try {
+            Object metricsBase = getMetricsBase(metrics);
+            if (metricsBase == null) {
+                return;
+            }
+            setBooleanField(metricsBase, "logSentData", enabled);
+            setBooleanField(metricsBase, "logResponseStatusText", enabled);
+            if (plugin != null && enabled) {
+                plugin.getLogger().info("bStats debug logging enabled (payload + response text).");
+            }
+        } catch (Exception ex) {
+            if (plugin != null) {
+                plugin.getLogger().warning("Failed to update bStats debug logging: " + ex.getMessage());
+            }
+        }
+    }
 
+    private void registerCharts(Metrics metrics, StarhavenSMPCore plugin, DatabaseManager databaseManager) {
         safeChart("total_items_in_market", () -> metrics.addCustomChart(new SingleLineChart(
                 "total_items_in_market",
-                () -> toInt(databaseManager.getTotalItemsInShop())
-        )));
-
-        safeChart("total_servers", () -> metrics.addCustomChart(new SingleLineChart(
-                "total_servers",
-                () -> 1
+                () -> safeTotalItems(databaseManager)
         )));
 
         safeChart("server_language", () -> metrics.addCustomChart(new SimplePie(
                 "server_language",
-                () -> Locale.getDefault().toLanguageTag()
+                this::safeLanguage
         )));
 
-        safeChart("server_type_version", () -> metrics.addCustomChart(new DrilldownPie(
-                "server_type_version",
-                () -> {
-                    String serverType = resolveServerType(plugin.getServer().getName());
-                    String version = plugin.getServer().getBukkitVersion();
-
-                    Map<String, Integer> versions = new HashMap<>();
-                    versions.put(version == null ? "unknown" : version, 1);
-
-                    return Collections.singletonMap(serverType, versions);
-                }
+        safeChart("player_language", () -> metrics.addCustomChart(new AdvancedPie(
+                "player_language",
+                this::safePlayerLanguages
         )));
+
+    }
+
+    private static Object getMetricsBase(Metrics metrics) throws ReflectiveOperationException {
+        Field metricsBaseField = metrics.getClass().getDeclaredField("metricsBase");
+        metricsBaseField.setAccessible(true);
+        return metricsBaseField.get(metrics);
+    }
+
+    private static void setBooleanField(Object target, String fieldName, boolean value)
+            throws ReflectiveOperationException {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.setBoolean(target, value);
     }
 
     private void safeChart(String name, Runnable registration) {
@@ -97,26 +114,50 @@ public final class BStatsModule {
         return value.compareTo(BigInteger.valueOf(MAX_INT)) > 0 ? MAX_INT : value.intValue();
     }
 
-    private static String resolveServerType(String name) {
-        if (name == null) {
-            return "Unknown";
+    private int safeTotalItems(DatabaseManager databaseManager) {
+        try {
+            return toInt(databaseManager.getTotalItemsInShop());
+        } catch (Exception ex) {
+            if (plugin != null) {
+                plugin.getLogger().warning("bStats total_items_in_market failed: " + ex.getMessage());
+            }
+            return 0;
         }
-        String lower = name.toLowerCase(Locale.ROOT);
-        if (lower.contains("paper")) {
-            return "Paper";
-        }
-        if (lower.contains("purpur")) {
-            return "Purpur";
-        }
-        if (lower.contains("folia")) {
-            return "Folia";
-        }
-        if (lower.contains("spigot")) {
-            return "Spigot";
-        }
-        if (lower.contains("bukkit")) {
-            return "Bukkit";
-        }
-        return "Other";
     }
+
+    private String safeLanguage() {
+        try {
+            String tag = Locale.getDefault().toLanguageTag();
+            return (tag == null || tag.isEmpty()) ? "unknown" : tag;
+        } catch (Exception ex) {
+            if (plugin != null) {
+                plugin.getLogger().warning("bStats server_language failed: " + ex.getMessage());
+            }
+            return "unknown";
+        }
+    }
+
+    private Map<String, Integer> safePlayerLanguages() {
+        Map<String, Integer> locales = new HashMap<>();
+        try {
+            plugin.getServer().getOnlinePlayers().forEach(player -> {
+                String locale = "unknown";
+                try {
+                    locale = player.getLocale();
+                } catch (Exception ignored) {
+                    // Ignore if the API is missing or the call fails.
+                }
+                if (locale == null || locale.isEmpty()) {
+                    locale = "unknown";
+                }
+                locales.put(locale, locales.getOrDefault(locale, 0) + 1);
+            });
+        } catch (Exception ex) {
+            if (plugin != null) {
+                plugin.getLogger().warning("bStats player_language failed: " + ex.getMessage());
+            }
+        }
+        return locales;
+    }
+
 }
