@@ -17,42 +17,67 @@ public final class BStatsModule {
 
     private static final int MAX_INT = Integer.MAX_VALUE;
     private static final int PLUGIN_ID = 29398;
+
     private final StarhavenSMPCore plugin;
     private final Metrics metrics;
 
     public BStatsModule(StarhavenSMPCore plugin, DatabaseManager databaseManager) {
         this.plugin = plugin;
+
         if (plugin == null || databaseManager == null) {
-            metrics = null;
+            this.metrics = null;
             return;
         }
+
         Metrics created = null;
         try {
             created = new Metrics(plugin, PLUGIN_ID);
-            registerCharts(plugin, databaseManager);
+
+            // Register charts against the created Metrics instance (not the field).
+            registerCharts(created, plugin, databaseManager);
+
             plugin.getLogger().info("bStats initialized (pluginId=" + PLUGIN_ID + ").");
         } catch (Exception ex) {
             plugin.getLogger().warning("bStats failed to initialize: " + ex.getMessage());
             ex.printStackTrace();
         }
-        metrics = created;
+
+        this.metrics = created;
     }
 
-    private void registerCharts(StarhavenSMPCore plugin, DatabaseManager databaseManager) {
-        safeChart("total_players", () -> metrics.addCustomChart(new SingleLineChart("total_players",
-                () -> plugin.getServer().getOnlinePlayers().size())));
-        safeChart("total_items_in_market", () -> metrics.addCustomChart(new SingleLineChart("total_items_in_market",
-                () -> toInt(databaseManager.getTotalItemsInShop()))));
-        safeChart("total_servers", () -> metrics.addCustomChart(new SingleLineChart("total_servers", () -> 1)));
-        safeChart("server_language", () -> metrics.addCustomChart(new SimplePie("server_language",
-                () -> Locale.getDefault().toLanguageTag())));
-        safeChart("server_type_version", () -> metrics.addCustomChart(new DrilldownPie("server_type_version", () -> {
-            String serverType = resolveServerType(plugin.getServer().getName());
-            String version = plugin.getServer().getBukkitVersion();
-            Map<String, Integer> versions = new HashMap<>();
-            versions.put(version == null ? "unknown" : version, 1);
-            return Collections.singletonMap(serverType, versions);
-        })));
+    private void registerCharts(Metrics metrics, StarhavenSMPCore plugin, DatabaseManager databaseManager) {
+        safeChart("total_players", () -> metrics.addCustomChart(new SingleLineChart(
+                "total_players",
+                () -> plugin.getServer().getOnlinePlayers().size()
+        )));
+
+        safeChart("total_items_in_market", () -> metrics.addCustomChart(new SingleLineChart(
+                "total_items_in_market",
+                () -> toInt(databaseManager.getTotalItemsInShop())
+        )));
+
+        safeChart("total_servers", () -> metrics.addCustomChart(new SingleLineChart(
+                "total_servers",
+                () -> 1
+        )));
+
+        safeChart("server_language", () -> metrics.addCustomChart(new SimplePie(
+                "server_language",
+                () -> Locale.getDefault().toLanguageTag()
+        )));
+
+        safeChart("server_type_version", () -> metrics.addCustomChart(new DrilldownPie(
+                "server_type_version",
+                () -> {
+                    String serverType = resolveServerType(plugin.getServer().getName());
+                    String version = plugin.getServer().getBukkitVersion();
+
+                    Map<String, Integer> versions = new HashMap<>();
+                    versions.put(version == null ? "unknown" : version, 1);
+
+                    return Collections.singletonMap(serverType, versions);
+                }
+        )));
     }
 
     private void safeChart(String name, Runnable registration) {
@@ -66,10 +91,7 @@ public final class BStatsModule {
     }
 
     private static int toInt(BigInteger value) {
-        if (value == null) {
-            return 0;
-        }
-        if (value.signum() <= 0) {
+        if (value == null || value.signum() <= 0) {
             return 0;
         }
         return value.compareTo(BigInteger.valueOf(MAX_INT)) > 0 ? MAX_INT : value.intValue();
