@@ -1,4 +1,4 @@
-package com.starhavensmpcore.market.placeholders;
+package com.starhavensmpcore.placeholders;
 
 import com.starhavensmpcore.core.StarhavenSMPCore;
 import com.starhavensmpcore.market.db.DatabaseManager;
