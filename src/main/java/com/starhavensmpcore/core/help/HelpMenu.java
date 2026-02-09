@@ -1,4 +1,4 @@
-package com.starhavensmpcore.help;
+package com.starhavensmpcore.core.help;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
