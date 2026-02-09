@@ -157,12 +157,29 @@ public final class BStatsModule {
                 }
                 locales.put(locale, locales.getOrDefault(locale, 0) + 1);
             });
+            if (locales.isEmpty()) {
+                String serverLocale = safeServerLocaleForPlayers();
+                locales.put(serverLocale, 1);
+            }
         } catch (Exception ex) {
             if (plugin != null) {
                 plugin.getLogger().warning("bStats player_language failed: " + ex.getMessage());
             }
         }
         return locales;
+    }
+
+    private String safeServerLocaleForPlayers() {
+        try {
+            Locale locale = Locale.getDefault();
+            if (locale == null) {
+                return "unknown";
+            }
+            String value = locale.toString(); // Matches player locale format like en_US.
+            return (value == null || value.isEmpty()) ? "unknown" : value;
+        } catch (Exception ignored) {
+            return "unknown";
+        }
     }
 
     private Map<String, Map<String, Integer>> safeInstalledPlugins() {
