@@ -14,8 +14,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.BlockCookEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.server.ServerCommandEvent;
+import org.bukkit.event.EventPriority;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -248,6 +250,41 @@ public class CustomItemManager implements Listener, CommandExecutor {
         }
         event.setCancelled(true);
         handleGive(event.getSender(), parts);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onBlockCook(BlockCookEvent event) {
+        if (event == null || event.isCancelled()) {
+            return;
+        }
+        ItemStack input = event.getSource();
+        BlockDefinition inputDefinition = getCustomItemDefinition(input);
+        if (inputDefinition == null) {
+            return;
+        }
+        String resultId = resolveSmeltResultId(inputDefinition.getId());
+        if (resultId == null) {
+            return;
+        }
+        BlockDefinition resultDefinition = ItemList.getBlockDefinition(resultId);
+        if (resultDefinition == null) {
+            return;
+        }
+        event.setResult(createItem(resultDefinition, 1));
+        debug("Forced smelt result for " + inputDefinition.getId() + " -> " + resultId);
+    }
+
+    private String resolveSmeltResultId(String inputId) {
+        if (inputId == null || inputId.isEmpty()) {
+            return null;
+        }
+        if ("raw_tin".equalsIgnoreCase(inputId)) {
+            return "tin_ingot";
+        }
+        if ("raw_cobalt".equalsIgnoreCase(inputId)) {
+            return "cobalt_ingot";
+        }
+        return null;
     }
 
     @Override
