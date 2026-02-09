@@ -3,6 +3,7 @@ package com.starhavensmpcore.metrics;
 import com.starhavensmpcore.core.StarhavenSMPCore;
 import com.starhavensmpcore.market.db.DatabaseManager;
 import org.bstats.bukkit.Metrics;
+import org.bstats.charts.DrilldownPie;
 import org.bstats.charts.AdvancedPie;
 import org.bstats.charts.SimplePie;
 import org.bstats.charts.SingleLineChart;
@@ -82,6 +83,10 @@ public final class BStatsModule {
                 this::safePlayerLanguages
         )));
 
+        safeChart("installed_plugins", () -> metrics.addCustomChart(new DrilldownPie(
+                "installed_plugins",
+                this::safeInstalledPlugins
+        )));
     }
 
     private static Object getMetricsBase(Metrics metrics) throws ReflectiveOperationException {
@@ -158,6 +163,32 @@ public final class BStatsModule {
             }
         }
         return locales;
+    }
+
+    private Map<String, Map<String, Integer>> safeInstalledPlugins() {
+        Map<String, Map<String, Integer>> data = new HashMap<>();
+        try {
+            for (org.bukkit.plugin.Plugin installed : plugin.getServer().getPluginManager().getPlugins()) {
+                if (installed == null || installed.getDescription() == null) {
+                    continue;
+                }
+                String name = installed.getDescription().getName();
+                if (name == null || name.isEmpty()) {
+                    continue;
+                }
+                String version = installed.getDescription().getVersion();
+                if (version == null || version.isEmpty()) {
+                    version = "unknown";
+                }
+                Map<String, Integer> versions = data.computeIfAbsent(name, ignored -> new HashMap<>());
+                versions.put(version, versions.getOrDefault(version, 0) + 1);
+            }
+        } catch (Exception ex) {
+            if (plugin != null) {
+                plugin.getLogger().warning("bStats installed_plugins failed: " + ex.getMessage());
+            }
+        }
+        return data;
     }
 
 }
