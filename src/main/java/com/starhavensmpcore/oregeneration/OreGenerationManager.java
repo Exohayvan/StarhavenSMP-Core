@@ -6,7 +6,9 @@ import com.starhavensmpcore.items.CustomBlockRegistry;
 import com.starhavensmpcore.items.GenerationRules;
 import com.starhavensmpcore.items.ItemList;
 import org.bukkit.Bukkit;
+import org.bukkit.Instrument;
 import org.bukkit.Material;
+import org.bukkit.Note;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -16,6 +18,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.type.NoteBlock;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
@@ -75,6 +78,9 @@ public class OreGenerationManager implements Listener {
     public void onChunkLoad(ChunkLoadEvent event) {
         Chunk chunk = event.getChunk();
         World world = chunk.getWorld();
+        if (!event.isNewChunk()) {
+            rehydrateCustomBlocks(chunk);
+        }
         List<BlockDefinition> generationBlocks = ItemList.generationBlocks();
         if (generationBlocks.isEmpty()) {
             return;
@@ -92,6 +98,86 @@ public class OreGenerationManager implements Listener {
                 Bukkit.getScheduler().runTask(plugin, () -> generateOre(chunk, definition));
             }
         });
+    }
+
+    private void rehydrateCustomBlocks(Chunk chunk) {
+        if (chunk == null || !chunk.isLoaded()) {
+            return;
+        }
+        World world = chunk.getWorld();
+        List<BlockDefinition> generationBlocks = ItemList.generationBlocks();
+        if (generationBlocks.isEmpty()) {
+            return;
+        }
+        int worldMin = world.getMinHeight();
+        int worldMax = world.getMaxHeight() - 1;
+        int minY = worldMax;
+        int maxY = worldMin;
+        boolean hasRange = false;
+        Map<NoteKey, BlockDefinition> noteKeyMap = new HashMap<>();
+
+        for (BlockDefinition definition : generationBlocks) {
+            GenerationRules rules = definition.getGenerationRules();
+            if (rules == null || !rules.isWorldAllowed(world)) {
+                continue;
+            }
+            String noteState = definition.getNoteBlockState();
+            if (noteState == null || noteState.isEmpty()) {
+                continue;
+            }
+            try {
+                BlockData data = Bukkit.createBlockData(noteState);
+                if (data instanceof NoteBlock) {
+                    NoteBlock noteBlock = (NoteBlock) data;
+                    NoteKey key = new NoteKey(noteBlock.getInstrument(), noteBlock.getNote());
+                    BlockDefinition existing = noteKeyMap.putIfAbsent(key, definition);
+                    if (existing != null && existing != definition) {
+                        debug("Duplicate note key for " + definition.getId() + " and " + existing.getId());
+                    }
+                }
+            } catch (IllegalArgumentException ex) {
+                debug("Invalid note block state for " + definition.getId() + ": " + ex.getMessage());
+            }
+
+            int min = rules.getMinY() == -1 ? worldMin : Math.max(worldMin, rules.getMinY());
+            int max = rules.getMaxY() == -1 ? worldMax : Math.min(worldMax, rules.getMaxY());
+            if (min > max) {
+                continue;
+            }
+            minY = Math.min(minY, min);
+            maxY = Math.max(maxY, max);
+            hasRange = true;
+        }
+
+        if (!hasRange || noteKeyMap.isEmpty()) {
+            return;
+        }
+
+        int scanMin = Math.max(worldMin, minY);
+        int scanMax = Math.min(worldMax, maxY);
+        for (int y = scanMin; y <= scanMax; y++) {
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    Block block = chunk.getBlock(x, y, z);
+                    if (block.getType() != Material.NOTE_BLOCK) {
+                        continue;
+                    }
+                    BlockData data = block.getBlockData();
+                    if (!(data instanceof NoteBlock)) {
+                        continue;
+                    }
+                    NoteBlock noteBlock = (NoteBlock) data;
+                    if (!noteBlock.isPowered()) {
+                        continue;
+                    }
+                    BlockDefinition definition = noteKeyMap.get(new NoteKey(noteBlock.getInstrument(), noteBlock.getNote()));
+                    if (definition == null) {
+                        continue;
+                    }
+                    customBlockRegistry.mark(block, definition, noteBlock);
+                }
+            }
+        }
     }
 
     private void initDatabase() {
@@ -663,6 +749,33 @@ public class OreGenerationManager implements Listener {
             result = 31 * result + y;
             result = 31 * result + z;
             return result;
+        }
+    }
+
+    private static final class NoteKey {
+        private final Instrument instrument;
+        private final Note note;
+
+        private NoteKey(Instrument instrument, Note note) {
+            this.instrument = instrument;
+            this.note = note;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            NoteKey noteKey = (NoteKey) o;
+            return instrument == noteKey.instrument && java.util.Objects.equals(note, noteKey.note);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(instrument, note);
         }
     }
 
