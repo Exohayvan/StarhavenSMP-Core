@@ -22,6 +22,10 @@
 
 StarhavenSMP Core is the main SMP plugin for Starhaven. It includes the dynamic market system, auto-sell, web analytics, resource pack delivery, custom items/blocks, and custom ore generation.
 
+> [!WARNING]  
+> SOME INFORMATION IN THIS README IS OUTDATED.  
+> WE ARE ACTIVELY REFACTORING THE CODEBASE AND WILL UPDATE THIS DOCUMENTATION ONCE THE REFACTOR IS COMPLETE.
+
 ## Features
 
 - Market GUI with dynamic pricing based on supply/demand and economy activity
