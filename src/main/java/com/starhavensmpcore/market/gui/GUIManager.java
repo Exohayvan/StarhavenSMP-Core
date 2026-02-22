@@ -79,7 +79,6 @@ public class GUIManager implements Listener {
             return totalQuantity;
         }
 
-        @SuppressWarnings("unused")
         double getPricePerItem() {
             return pricePerItem;
         }
